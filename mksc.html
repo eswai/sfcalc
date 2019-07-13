@@ -1,0 +1,277 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Keyboard MX Switch Force Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.min.css">
+  </head>
+  <body>
+    <div class="container">
+      <section class="section">
+        <h1 class="title is-3">Keyboard Switch Force Calculator (MX Linear)</h1>
+        <div id="app">
+
+          <div class="columns">
+
+            <div class="column">
+              <label class="label">Bottom-out force</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="sforce" >
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    cN
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="column">
+              <label class="label">Free length of spring</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="slength" >
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    mm
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="column">
+              <label class="label">Reset posision</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="sreset" >
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    mm
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="column">
+              <label class="label">Friction 1</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="friction1" title="Friction between stem and housing">
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    cN
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="column">
+              <label class="label">Friction 2</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="friction2" title="Friction between stem and contact at reset position">
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    cN
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="column">
+              <label class="label">Friction 3</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="friction3" title="Friction between stem and contact at the end of release travel">
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    cN
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="control">
+            <button id="renderBtn" v-on:click="render" class="button is-dark">Render</button>
+            <label class="checkbox">
+              <input type="checkbox" v-model="bupdate">
+              Update curves in memory
+            </label>
+          </div>
+        </div>
+      </section>
+      <section class="section">
+        <canvas id="chart" style="position: relative; height:60vh; width:20vw"></canvas>
+      </section>
+      <footer class="footer">
+        <div class="content has-text-centered">
+          <p>
+            <strong>Keyboard Switch Force Calculator</strong> by <a href="https://github.com/eswai/">eswai</a>. The source code is licensed
+            <a href="http://opensource.org/licenses/mit-license.php">MIT</a>.
+          </p>
+        </div>
+      </footer>
+    </div>
+  </body>
+
+  <script type="text/javascript">
+    var app = new Vue({
+      el: '#app',
+      data: {
+        slength: 15.0,
+        sforce: 55.0,
+        sreset: 1.5,
+        friction1: 0.2,
+        friction2: 9.0,
+        friction3: 15.0,
+        bupdate: true,
+        fdata: {},
+        fchart: "",
+        ca: 0,
+        cbp: 0,
+        car2: 0,
+        cbr1: 0,
+        cbr2: 0,
+        travel: 4, // switch travel in mm
+        blength: 7 // spring lenghn in housing in mm
+      },
+
+      created: function() {
+        var ctx = document.getElementById('chart').getContext('2d')
+
+        this.fdata = {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: 'Press',
+                data: [],
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 0,
+                borderColor: 'rgba(255, 0, 0, 0.8)',
+                lineTension: 0
+              },
+              {
+                label: 'Release',
+                data: [],
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 0,
+                borderColor: 'rgba(0, 0, 0, 0.8)',
+                lineTension: 0
+              },
+              {
+                label: 'Press in memory',
+                data: [],
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 0,
+                borderColor: 'rgba(255, 0, 0, 0.3)',
+                lineTension: 0
+              },
+              {
+                label: 'Release in memory',
+                data: [],
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 0,
+                borderColor: 'rgba(0, 0, 0, 0.3)',
+                lineTension: 0
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              xAxes: [{
+                scaleLabel: {
+                  display: true,
+                  labelString: 'Travel [mm]'
+                }
+              }],
+              yAxes: [{
+                scaleLabel: {
+                  display: true,
+                  labelString: 'Force (cN)'
+                },
+                ticks: {
+                  beginAtZero: true
+                }
+              }]
+            }
+          }
+        }
+        this.fchart = new Chart(ctx, this.fdata)
+      },
+
+      methods: {
+        forcePress: function(x) {
+          return this.ca * x + this.cbp
+        },
+
+        forceRelease1: function(x) {
+          return this.ca * x + this.cbr1
+        },
+
+        forceRelease2: function(x) {
+          return this.car2 * x + this.cbr2
+        },
+
+        cutSpring: function() {
+        },
+
+        createForceData: function() {
+          var pdata = []
+          var rdata = []
+          var labels = []
+
+          this.ca = parseFloat(this.sforce) / (parseFloat(this.slength) - (this.blength - this.travel))
+          this.cbp = parseFloat(this.sforce) - this.ca * this.travel + parseFloat(this.friction1)
+
+          this.car2 = parseFloat(this.sforce) / (parseFloat(this.slength) - (this.blength - this.travel)) - (parseFloat(this.friction2) - parseFloat(this.friction3)) / this.sreset
+          this.cbr1 = parseFloat(this.sforce) - this.ca * this.travel - parseFloat(this.friction1)
+          this.cbr2 = parseFloat(this.sforce) - this.ca * this.travel - parseFloat(this.friction3)
+
+          for (var i = 0; i <= this.travel; i+=0.1) {
+            var x = i.toFixed(1)
+            pdata.push(this.forcePress(x))
+            labels.push(x)
+          }
+          for (var i = 0; i <= this.travel; i+=0.1) {
+            var x = i.toFixed(1)
+            if (x < this.sreset) {
+              rdata.push(this.forceRelease2(x))
+            } else {
+              rdata.push(this.forceRelease1(x))
+            }
+          }
+          return {press: pdata, release: rdata, labels: labels}
+        },
+
+        render: function() {
+          var scurve = this.createForceData()
+          if (this.bupdate || this.fdata.data.datasets[2].data.length == 0) {
+            this.fdata.data.datasets[2].data = this.fdata.data.datasets[0].data
+            this.fdata.data.datasets[3].data = this.fdata.data.datasets[1].data
+          }
+          this.fdata.data.datasets[0].data = scurve.press
+          this.fdata.data.datasets[1].data = scurve.release
+          this.fdata.data.labels = scurve.labels
+
+          this.fchart.update()
+        }
+      }
+    })
+  </script>
+</html>
