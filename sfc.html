@@ -13,6 +13,21 @@
         <div id="app">
 
           <div class="columns">
+            <div class="column">
+              <label class="label">Switches</label>
+              <div class="control">
+                <div class="select">
+                  <select v-model="kswitch" v-on:change="updatePar">
+                    <option v-for="option in switches" v-bind:value="option.name">
+                      {{ option.name }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="columns">
 
             <div class="column">
               <label class="label">Bottom-out force</label>
@@ -141,7 +156,18 @@
         cbr1: 0,
         cbr2: 0,
         travel: 4, // switch travel in mm
-        blength: 7 // spring lenghn in housing in mm
+        blength: 11, // spring lenghn in housing in mm
+        kswitch: 'Cherry MX Red',
+        switches: {
+          'Cherry MX Red':   { name: 'Cherry MX Red',   sforce: 55,  slength: 15,   sreset: 1.5, friction1: 0.2, friction2: 9,  friction3: 15},
+          'Cherry MX Black': { name: 'Cherry MX Black', sforce: 75,  slength: 15,   sreset: 2.1, friction1: 0.2, friction2: 6,  friction3: 13},
+          'Cherry MX Grey':  { name: 'Cherry MX Grey',  sforce: 110, slength: 15,   sreset: 2,   friction1: 0.2, friction2: 7,  friction3: 12},
+          'Kaihua Silver':   { name: 'Kaihua Silver',   sforce: 53,  slength: 13,   sreset: 1.3, friction1: 0.2, friction2: 15, friction3: 17},
+          'Kaihua Red':      { name: 'Kaihua Red',      sforce: 65,  slength: 15.5, sreset: 2.1, friction1: 0.2, friction2: 14, friction3: 23},
+          'Kaihua Box Red':  { name: 'Kaihua Box Red',  sforce: 55,  slength: 14,   sreset: 2.1, friction1: 0.2, friction2: 5,  friction3: 6},
+          'Gateron Red':     { name: 'Gateron Red',     sforce: 55,  slength: 16,   sreset: 2.4, friction1: 0.2, friction2: 14, friction3: 17},
+          'Gateron Clear':   { name: 'Gateron Clear',   sforce: 40,  slength: 15,   sreset: 1.7, friction1: 0.2, friction2: 10, friction3: 13}
+        }
       },
 
       created: function() {
@@ -229,6 +255,17 @@
         },
 
         cutSpring: function() {
+        },
+
+        updatePar: function() {
+          var s = this.switches[this.kswitch]
+          console.log(s.name)
+          this.sforce = s.sforce
+          this.slength = s.slength
+          this.sreset = s.sreset
+          this.friction1 = s.friction1
+          this.friction2 = s.friction2
+          this.friction3 = s.friction3
         },
 
         createForceData: function() {
