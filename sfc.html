@@ -25,6 +25,41 @@
                 </div>
               </div>
             </div>
+
+            <div class="column">
+              <label class="label">Press force</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="pforce" >
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    cN
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="column">
+              <label class="label">Keycap weight</label>
+              <div class="field has-addons">
+                <p class="control">
+                  <input class="input" type="number" v-model="keycap" >
+                </p>
+                <p class="control">
+                  <a class="button is-static">
+                    g
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="column">
+            </div>
+            <div class="column">
+            </div>
+            <div class="column">
+            </div>
           </div>
 
           <div class="columns">
@@ -124,7 +159,10 @@
         </div>
 
         <div class="field">
-          <canvas id="chart" style="position: relative; height:60vh; width:20vw"></canvas>
+          <canvas id="schart" style="position: relative; height:40vh; width:20vw"></canvas>
+        </div>
+        <div class="field">
+          <canvas id="mchart" style="position: relative; height:40vh; width:20vw"></canvas>
         </div>
       </section>
       <footer class="footer">
@@ -142,6 +180,8 @@
     var app = new Vue({
       el: '#app',
       data: {
+        pforce: 200.0,
+        keycap: 1.5,
         slength: 15.0,
         sforce: 55.0,
         sreset: 1.5,
@@ -151,6 +191,8 @@
         bupdate: true,
         fdata: {},
         fchart: "",
+        mdata: {},
+        mchart: "",
         ca: 0,
         cbp: 0,
         car2: 0,
@@ -172,7 +214,7 @@
       },
 
       created: function() {
-        var ctx = document.getElementById('chart').getContext('2d')
+        var ctx = document.getElementById('schart').getContext('2d')
 
         this.fdata = {
           type: 'line',
@@ -240,6 +282,57 @@
           }
         }
         this.fchart = new Chart(ctx, this.fdata)
+
+        var ctx2 = document.getElementById('mchart').getContext('2d')
+
+        this.mdata = {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: 'Motion',
+                data: [],
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 0,
+                borderColor: 'rgba(255, 0, 0, 0.8)',
+                lineTension: 0
+              },
+              {
+                label: 'Motion in memory',
+                data: [],
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 0,
+                borderColor: 'rgba(255, 0, 0, 0.3)',
+                lineTension: 0
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              xAxes: [{
+                scaleLabel: {
+                  display: true,
+                  labelString: 'Time [sec]'
+                }
+              }],
+              yAxes: [{
+                scaleLabel: {
+                  display: true,
+                  labelString: 'Travel (mm)'
+                },
+                ticks: {
+                  beginAtZero: true
+                }
+              }]
+            }
+          }
+        }
+        this.mchart = new Chart(ctx2, this.mdata)
       },
 
       methods: {
@@ -269,6 +362,66 @@
           this.friction3 = s.friction3
         },
 
+        fx: function(v, x) {
+          return v
+        },
+
+        fv1: function(v, x) {
+          return (this.pforce + this.friction1 - this.forcePress(x) - 0.1 * v) / this.keycap
+        },
+
+        fv2: function(v, x) {
+          return (- this.friction1 - this.forceRelease1(x) - 0.1 * v) / this.keycap
+        },
+
+        fv3: function(v, x) {
+          return (- this.friction2 - this.forceRelease2(x) - 0.1 * v) / this.keycap
+        },
+
+        createMotion: function() {
+          var xdata = []
+          var labels = []
+          var dt = 0.001
+          var x = 0.0
+          var v = 0.0
+          var tt
+          var nx = 0.0
+          var nv = 0.0
+          for (var t = 0.0; t < 1.01; t += dt) {
+            tt = t
+            nv = v + dt * this.fv1(v, x)
+            nx = x + dt * this.fx(v, x)
+            xdata.push(nx)
+            labels.push(t.toFixed(2))
+            v = nv
+            x = nx
+            if (nx > 4) break;
+          }
+          v = 0
+          for (var t = tt; t < 1.01; t += dt) {
+            tt = t
+            nv = v + dt * this.fv2(v, x)
+            nx = x + dt * this.fx(v, x)
+            xdata.push(nx)
+            labels.push(t.toFixed(2))
+            v = nv
+            x = nx
+            if (nx < this.sreset) break;
+          }
+          for (var t = tt; t < 1.01; t += dt) {
+            tt = t
+            nv = v + dt * this.fv3(v, x)
+            nx = x + dt * this.fx(v, x)
+            xdata.push(nx)
+            labels.push(t.toFixed(2))
+            v = nv
+            x = nx
+            if (nx < 0) break;
+          }
+
+          return {data: xdata, labels: labels}
+        },
+
         createForceData: function() {
           var pdata = []
           var rdata = []
@@ -281,12 +434,12 @@
           this.cbr1 = parseFloat(this.sforce) - this.ca * this.travel - parseFloat(this.friction1)
           this.cbr2 = parseFloat(this.sforce) - this.ca * this.travel - parseFloat(this.friction3)
 
-          for (var i = 0; i <= this.travel; i+=0.1) {
+          for (var i = 0.0; i <= this.travel; i+=0.1) {
             var x = i.toFixed(1)
             pdata.push(this.forcePress(x))
             labels.push(x)
           }
-          for (var i = 0; i <= this.travel; i+=0.1) {
+          for (var i = 0.0; i <= this.travel; i+=0.1) {
             var x = i.toFixed(1)
             if (x < this.sreset) {
               rdata.push(this.forceRelease2(x))
@@ -308,6 +461,15 @@
           this.fdata.data.labels = scurve.labels
 
           this.fchart.update()
+
+          var mcurve = this.createMotion()
+          if (this.bupdate || this.mdata.data.datasets[1].data.length == 0) {
+            this.mdata.data.datasets[1].data = this.mdata.data.datasets[0].data
+          }
+          this.mdata.data.datasets[0].data = mcurve.data
+          this.mdata.data.labels = mcurve.labels
+
+          this.mchart.update()
         }
       }
     })
