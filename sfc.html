@@ -366,16 +366,16 @@
           return v
         },
 
-        fv1: function(v, x) {
-          return (this.pforce - this.forcePress(x) - 0.0 * v) / this.keycap
+        fv1: function(v, x) { // N, mm, sec, kg
+          return (this.pforce / 100 - this.forcePress(x) / 100 - 0.0 * v) / parseFloat(this.keycap) * 1000
         },
 
         fv2: function(v, x) {
-          return (- this.forceRelease1(x) - 0.0 * v) / this.keycap
+          return (- this.forceRelease1(x) / 100 - 0.0 * v) / parseFloat(this.keycap) * 1000
         },
 
         fv3: function(v, x) {
-          return (- this.forceRelease2(x) - 0.0 * v) / this.keycap
+          return (- this.forceRelease2(x) / 100 - 0.0 * v) / parseFloat(this.keycap) * 1000
         },
 
         createMotion: function() {
