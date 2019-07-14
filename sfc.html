@@ -367,15 +367,15 @@
         },
 
         fv1: function(v, x) {
-          return (this.pforce - this.friction1 - this.forcePress(x) - 0.0 * v) / this.keycap
+          return (this.pforce - this.forcePress(x) - 0.0 * v) / this.keycap
         },
 
         fv2: function(v, x) {
-          return (+ this.friction1 - this.forceRelease1(x) - 0.0 * v) / this.keycap
+          return (- this.forceRelease1(x) - 0.0 * v) / this.keycap
         },
 
         fv3: function(v, x) {
-          return (+ this.friction2 - this.forceRelease2(x) - 0.0 * v) / this.keycap
+          return (- this.forceRelease2(x) - 0.0 * v) / this.keycap
         },
 
         createMotion: function() {
